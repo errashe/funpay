@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vue money parser</title>
+</head>
+<body>
+    <div id="app">
+        <table border="1">
+            <thead>
+            <tr>
+                <th>Server</th>
+                <th>Side</th>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Price</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr v-for="(row, key) in data">
+                <td>{{row.Server}}</td>
+                <td>{{row.Side}}</td>
+                <td>{{row.Seller.Name}}</td>
+                <td>{{row.Amount}}</td>
+                <td>{{row.Price}}</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="vue.global.js"></script>
+    <script>
+        const { createApp, ref, computed, watch } = Vue;
+
+        let Data, Events, Filter;
+
+        const app = createApp({
+            setup() {
+
+                Data = ref({});
+                Events = ref({});
+
+                Filter = ref({});
+
+                const encodedFilter = computed(() => Object.entries(Filter.value).map(e => encodeURI(e.join("="))).join("&"));
+
+                watch(encodedFilter, () => {
+                    if (Event.value && Event.value.readyState === Event.value.OPEN) Event.value.close();
+                    Events.value = new EventSource(`/sse?${encodedFilter.value}`);
+
+                    const jsonUnwrapper = (functionToBeWrapped) => {
+                        return function(event) {
+                            const json = JSON.parse(event.data);
+                            return functionToBeWrapped.apply(this, [json]);
+                        };
+                    };
+
+                    Events.value.addEventListener("Initial",  jsonUnwrapper(json => Data.value = json ));
+                    Events.value.addEventListener("New",      jsonUnwrapper(json => Data.value[json.ID] = json ));
+                    Events.value.addEventListener("Update",   jsonUnwrapper(json => Data.value[json.ID] = json ));
+                    Events.value.addEventListener("Delete",   jsonUnwrapper(json => delete Data.value[json.ID] ));
+                });
+
+                const sortedData = computed(() => Object.keys(Data.value).
+                    sort((a, b) => Data.value[a].Price - Data.value[b].Price).
+                    reduce((acc, cur) => { acc[cur] = Data.value[cur]; return acc }, {})
+                );
+
+                Filter.value = {
+                    Server: "Ревущий фьорд",
+                    Side: "Орда",
+                };
+
+                return { data: sortedData }
+            }
+        });
+
+        app.mount("#app");
+    </script>
+</body>
+</html>
